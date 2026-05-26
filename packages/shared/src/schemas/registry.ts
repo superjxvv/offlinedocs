@@ -1,6 +1,6 @@
 import { z } from 'zod/v4';
 
-const SourceTypeEnum = z.enum(['llms-txt', 'github', 'context7']);
+import { SourceTypeEnum } from './source-type.js';
 
 const LibraryEntrySchema = z.object({
   id: z.string().min(1),

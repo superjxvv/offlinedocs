@@ -32,3 +32,29 @@
 ## Dependencies
 
 - Story 1.1 (monorepo scaffold) — completed
+
+## Code Review
+
+**Date:** 2026-05-26
+**Reviewer:** BMAD Code Review (3-layer: Blind Hunter, Edge Case Hunter, Acceptance Auditor)
+**Baseline:** 595ea8e → HEAD (commits e3f0a52 + 5d51b43)
+
+### Summary
+
+- **4 patches applied**
+- **0 deferred**
+- **4 dismissed** (false positives / intentional design)
+
+### Patches Applied
+
+- [x] **`AdapterError.cause` shadows native `Error.cause`** (`errors.ts`) — Constructor declared its own `cause` field instead of forwarding to `super(message, { cause })`. Fixed to use the native ES2022 error cause mechanism.
+- [x] **Unused `zod-to-json-schema` in devDependencies** (`package.json`) — The fix commit switched to `z.toJSONSchema()` from `zod/v4` but left the old package in devDependencies. Removed.
+- [x] **Duplicate SourceType enum definition** (`registry.ts`, `library-config.ts`) — The source type enum `['llms-txt', 'github', 'context7']` was defined independently in both files. Extracted to shared `schemas/source-type.ts` to prevent drift.
+- [x] **`FrontmatterSchema.topics` allows empty strings** (`frontmatter.ts`) — `z.array(z.string())` permitted empty-string topics which would degrade search quality. Added `.min(1)` to topic string validation.
+
+### Dismissed
+
+- `sourceUrl` not validated as URL format — intentionally permissive for flexibility
+- `normalizeBundlePath` not used internally by `validateBundle` — utility export for callers
+- Checksums not validated as hex SHA-256 format — runtime validation in bundle-validator is sufficient
+- Path traversal edge case where `filePath === resolvedBundlePath` — extremely unlikely; defensive check is adequate

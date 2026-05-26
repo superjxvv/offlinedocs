@@ -60,9 +60,6 @@ importers:
       '@types/node':
         specifier: ^25.9.1
         version: 25.9.1
-      zod-to-json-schema:
-        specifier: ^3.25.2
-        version: 3.25.2(zod@3.25.76)
 
 packages:
 

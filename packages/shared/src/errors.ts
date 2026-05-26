@@ -11,9 +11,9 @@ export class AdapterError extends Error {
     public readonly code: AdapterErrorCode,
     public readonly libraryId: string,
     message: string,
-    public readonly cause?: Error,
+    cause?: Error,
   ) {
-    super(message);
+    super(message, cause ? { cause } : undefined);
     this.name = 'AdapterError';
   }
 }
