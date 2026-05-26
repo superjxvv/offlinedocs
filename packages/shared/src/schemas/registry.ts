@@ -1,25 +1,25 @@
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 const SourceTypeEnum = z.enum(['llms-txt', 'github', 'context7']);
 
 const LibraryEntrySchema = z.object({
-  id: z.string(),
-  name: z.string(),
+  id: z.string().min(1),
+  name: z.string().min(1),
   description: z.string(),
   version: z.string().optional(),
   sourceType: SourceTypeEnum,
-  sourceUrl: z.string(),
-  lastFetched: z.string(),
-  contentHash: z.string(),
-  chunkCount: z.number().int(),
+  sourceUrl: z.string().min(1),
+  lastFetched: z.string().min(1),
+  contentHash: z.string().min(1),
+  chunkCount: z.number().int().nonnegative(),
   checksums: z.record(z.string(), z.string()),
 });
 
 export const RegistrySchema = z.object({
-  bundleFormatVersion: z.number().int().describe('Bundle format version number'),
+  bundleFormatVersion: z.number().int().positive(),
   libraries: z.array(LibraryEntrySchema),
-  fileCount: z.number().int(),
-  generatedAt: z.string(),
+  fileCount: z.number().int().nonnegative(),
+  generatedAt: z.string().min(1),
 });
 
 export type Registry = z.infer<typeof RegistrySchema>;
