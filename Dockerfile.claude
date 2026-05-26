@@ -1,0 +1,41 @@
+FROM node:22-slim
+
+ENV CONDA_DIR=/opt/conda
+ENV PATH="${CONDA_DIR}/bin:${PATH}"
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends git ripgrep ca-certificates build-essential curl bash bzip2 \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN arch="$(uname -m)" \
+  && case "$arch" in \
+    x86_64) miniforge_arch="x86_64" ;; \
+    aarch64|arm64) miniforge_arch="aarch64" ;; \
+    *) echo "Unsupported architecture: $arch" >&2; exit 1 ;; \
+  esac \
+  && curl -fsSL -o /tmp/miniforge.sh \
+    "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-${miniforge_arch}.sh" \
+  && bash /tmp/miniforge.sh -b -p "${CONDA_DIR}" \
+  && rm /tmp/miniforge.sh \
+  && "${CONDA_DIR}/bin/conda" config --system --set auto_activate_base false \
+  && "${CONDA_DIR}/bin/conda" create -y -n py313 python=3.13 \
+  && "${CONDA_DIR}/bin/conda" clean -afy \
+  && ln -sf "${CONDA_DIR}/bin/conda" /usr/local/bin/conda
+
+RUN npm install -g @anthropic-ai/claude-code
+
+RUN useradd -m claude \
+  && mkdir -p /home/claude/.claude /workspace/node_modules \
+  && chown -R claude:claude /home/claude /workspace "${CONDA_DIR}" \
+  && git config --system --add safe.directory /workspace
+
+USER claude
+
+# Pre-cache ccstatusline so the status line command doesn't timeout on npx download
+RUN npx -y ccstatusline@latest --help 2>/dev/null || true
+
+WORKDIR /workspace
+
+RUN git config --global credential.helper '!f() { echo "username=x-access-token"; echo "password=${GITHUB_TOKEN}"; }; f'
+
+ENTRYPOINT ["claude"]

@@ -1,0 +1,24 @@
+services:
+  claude:
+    build:
+      context: .
+      dockerfile: Dockerfile.claude
+    container_name: claude-code
+    stdin_open: true
+    tty: true
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - ${CLAUDE_CONFIG_DIR:-${USERPROFILE}/.claude}:/home/claude/.claude
+      - ${USERPROFILE}/.config/ccstatusline:/home/claude/.config/ccstatusline:ro
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - TERM=xterm-256color
+      - COLUMNS=${COLUMNS:-200}
+      - LINES=${LINES:-50}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    command: ["--dangerously-skip-permissions"]
+
