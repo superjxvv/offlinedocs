@@ -202,3 +202,30 @@ None — clean implementation with no issues.
 - packages/server/src/index.ts (NEW)
 - packages/server/src/index.test.ts (NEW)
 - pnpm-lock.yaml (NEW)
+
+## Code Review
+
+**Date:** 2026-05-26
+**Reviewer:** Claude Opus 4 (automated)
+
+### Summary
+
+- **Patches applied:** 0
+- **Deferred:** 1
+- **Dismissed:** 7
+
+All 8 acceptance criteria pass. Build and tests succeed. No bugs, security issues, or spec violations found.
+
+### Deferred Findings
+
+- [ ] **vitest.workspace.ts deprecated** — vitest 3.x warns: "The workspace file is deprecated and will be removed in the next major. Please, use the `test.projects` field in the root config file instead." Not caused by this story (spec AC #3 explicitly requires `vitest.workspace.ts`). Should be addressed before upgrading to vitest 4.x.
+
+### Dismissed Findings
+
+- `globals: true` in vitest configs is redundant (tests use explicit imports) — not harmful
+- `allowBuilds` in pnpm-workspace.yaml not in spec — required for pnpm 10+ to allow esbuild build scripts
+- Extra tsconfig.base.json options beyond spec (`skipLibCheck`, `esModuleInterop`, etc.) — additive/beneficial
+- `clean: true` only on first tsup array entry — correct pattern (clean once, then additive writes)
+- Empty scaffold source files produce empty dist — expected for scaffold story
+- `dts: true` on CLI entries generates unnecessary type declarations — not harmful
+- Build script uses `--filter x --filter y` instead of spec's brace expansion `--filter {x,y}` — functionally equivalent
