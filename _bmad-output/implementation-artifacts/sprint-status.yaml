@@ -46,7 +46,7 @@ development_status:
   epic-1: in-progress
   1-1-monorepo-scaffold-and-build-pipeline: done
   1-2-bundle-format-schemas-and-shared-types: done
-  1-3-json-schema-generation-and-bundle-validation-helpers: backlog
+  1-3-json-schema-generation-and-bundle-validation-helpers: done
   epic-1-retrospective: optional
 
   # Epic 2: Online Doc Fetching & Bundle Creation

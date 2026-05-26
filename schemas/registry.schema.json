@@ -1,0 +1,86 @@
+{
+  "$ref": "#/definitions/Registry",
+  "definitions": {
+    "Registry": {
+      "type": "object",
+      "properties": {
+        "bundleFormatVersion": {
+          "type": "integer",
+          "description": "Bundle format version number"
+        },
+        "libraries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              },
+              "sourceType": {
+                "type": "string",
+                "enum": [
+                  "llms-txt",
+                  "github",
+                  "context7"
+                ]
+              },
+              "sourceUrl": {
+                "type": "string"
+              },
+              "lastFetched": {
+                "type": "string"
+              },
+              "contentHash": {
+                "type": "string"
+              },
+              "chunkCount": {
+                "type": "integer"
+              },
+              "checksums": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "description",
+              "sourceType",
+              "sourceUrl",
+              "lastFetched",
+              "contentHash",
+              "chunkCount",
+              "checksums"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "fileCount": {
+          "type": "integer"
+        },
+        "generatedAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "bundleFormatVersion",
+        "libraries",
+        "fileCount",
+        "generatedAt"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

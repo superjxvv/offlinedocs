@@ -9,6 +9,9 @@ export { AdapterError, type AdapterErrorCode } from './errors.js';
 // Result
 export { type Result, ok, err } from './result.js';
 
+// Bundle validation
+export { validateBundle, normalizeBundlePath, type BundleValidationResult } from './bundle-validator.js';
+
 // Constants
 export {
   SEARCH_WEIGHTS,

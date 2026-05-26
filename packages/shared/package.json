@@ -11,11 +11,16 @@
   },
   "scripts": {
     "build": "tsup",
+    "generate:schema": "tsx src/schema-gen.ts",
     "dev": "tsup --watch",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
     "zod": "^3.25.23"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "zod-to-json-schema": "^3.25.2"
   }
 }
