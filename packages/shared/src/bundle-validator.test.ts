@@ -157,6 +157,76 @@ describe('validateBundle', () => {
     );
   });
 
+  it('rejects path traversal in checksum keys', async () => {
+    const chunkContent = '# Hooks\n';
+    await mkdir(path.join(bundlePath, 'react'), { recursive: true });
+    await writeFile(path.join(bundlePath, 'react', 'hooks.md'), chunkContent);
+
+    const registry = {
+      bundleFormatVersion: 1,
+      libraries: [
+        {
+          id: 'react',
+          name: 'React',
+          description: 'A library',
+          sourceType: 'github',
+          sourceUrl: 'https://github.com/facebook/react',
+          lastFetched: '2026-05-26T00:00:00.000Z',
+          contentHash: 'abc123',
+          chunkCount: 1,
+          checksums: {
+            '../../etc/passwd': 'deadbeef',
+          },
+        },
+      ],
+      fileCount: 1,
+      generatedAt: '2026-05-26T00:00:00.000Z',
+    };
+
+    await writeFile(
+      path.join(bundlePath, 'registry.json'),
+      JSON.stringify(registry),
+    );
+
+    const result = await validateBundle(bundlePath);
+
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('Path traversal detected'))).toBe(true);
+  });
+
+  it('rejects path traversal in library id', async () => {
+    const registry = {
+      bundleFormatVersion: 1,
+      libraries: [
+        {
+          id: '../../../etc',
+          name: 'Evil',
+          description: 'Malicious',
+          sourceType: 'github',
+          sourceUrl: 'https://example.com',
+          lastFetched: '2026-05-26T00:00:00.000Z',
+          contentHash: 'abc',
+          chunkCount: 0,
+          checksums: {},
+        },
+      ],
+      fileCount: 0,
+      generatedAt: '2026-05-26T00:00:00.000Z',
+    };
+
+    await writeFile(
+      path.join(bundlePath, 'registry.json'),
+      JSON.stringify(registry),
+    );
+
+    const result = await validateBundle(bundlePath);
+
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('Path traversal detected in library id'))).toBe(
+      true,
+    );
+  });
+
   it('returns invalid when library directory is missing', async () => {
     const registry = {
       bundleFormatVersion: 1,

@@ -47,9 +47,14 @@ export async function validateBundle(
   }
 
   // 3. Collect all chunk files on disk
+  const resolvedBundlePath = path.resolve(bundlePath);
   const chunkFiles: string[] = [];
   for (const lib of registry.libraries) {
-    const libDir = path.join(bundlePath, lib.id);
+    const libDir = path.resolve(bundlePath, lib.id);
+    if (!libDir.startsWith(resolvedBundlePath + path.sep)) {
+      errors.push(`Path traversal detected in library id: ${lib.id}`);
+      continue;
+    }
     try {
       const files = await readdir(libDir);
       for (const file of files) {
@@ -70,7 +75,11 @@ export async function validateBundle(
   // 5. Verify SHA-256 checksums for each chunk file
   for (const lib of registry.libraries) {
     for (const [relativePath, expectedChecksum] of Object.entries(lib.checksums)) {
-      const filePath = path.join(bundlePath, relativePath);
+      const filePath = path.resolve(bundlePath, relativePath);
+      if (!filePath.startsWith(resolvedBundlePath + path.sep) && filePath !== resolvedBundlePath) {
+        errors.push(`Path traversal detected in checksum key: ${relativePath}`);
+        continue;
+      }
       try {
         const content = await readFile(filePath);
         const actualChecksum = createHash('sha256').update(content).digest('hex');
