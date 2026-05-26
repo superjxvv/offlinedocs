@@ -76,7 +76,7 @@ export async function validateBundle(
   for (const lib of registry.libraries) {
     for (const [relativePath, expectedChecksum] of Object.entries(lib.checksums)) {
       const filePath = path.resolve(bundlePath, relativePath);
-      if (!filePath.startsWith(resolvedBundlePath + path.sep) && filePath !== resolvedBundlePath) {
+      if (!filePath.startsWith(resolvedBundlePath + path.sep)) {
         errors.push(`Path traversal detected in checksum key: ${relativePath}`);
         continue;
       }

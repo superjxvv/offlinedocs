@@ -82,3 +82,22 @@ Claude Opus 4
 - packages/shared/src/index.ts (MODIFIED — added exports)
 - packages/shared/package.json (MODIFIED — added generate:schema script, devDeps)
 - schemas/registry.schema.json (NEW — generated)
+
+## Code Review
+
+**Date:** 2026-05-26
+
+**Summary:** 1 patch applied, 2 deferred, 1 dismissed
+
+### Patches Applied
+
+- [x] **`bundle-validator.ts:79` — Remove unnecessary `filePath !== resolvedBundlePath` escape hatch in path traversal check for checksum keys.** The condition `&& filePath !== resolvedBundlePath` allowed a checksum key of `""` or `"."` to resolve to the bundle root and bypass the traversal guard. Removed the escape hatch so the check is strictly `!filePath.startsWith(resolvedBundlePath + path.sep)`.
+
+### Deferred
+
+- `bundle-validator.ts:59` — `readdir` is non-recursive, so nested chunk files (e.g., `react/api/hooks.md`) would not be counted, causing false file count mismatches. Not an issue with current flat bundle format, but should be revisited if nested structures are introduced.
+- `bundle-validator.ts:59` — `readdir` returns all directory entries including subdirectories, which would inflate the chunk file count. Same scope as above.
+
+### Dismissed
+
+- No deduplication of chunk files across libraries — library IDs are unique and paths are scoped by `lib.id/`, so duplicates cannot occur in practice.
