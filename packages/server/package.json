@@ -18,8 +18,12 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@offlinedocs/shared": "workspace:^",
+    "@offlinedocs/shared": "*",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@11ty/gray-matter": "^2.0.2"
+    "@11ty/gray-matter": "^2.0.2",
+    "zod": "^3.25.23"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1"
   }
 }

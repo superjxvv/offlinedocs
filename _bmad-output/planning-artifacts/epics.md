@@ -7,6 +7,8 @@ inputDocuments:
   - _bmad-output/planning-artifacts/architecture.md
 ---
 
+> **NOTE (Story 4.1):** This artifact references pnpm workspaces and pnpm commands. The project migrated to npm in Story 4.1. Treat pnpm references below as historical.
+
 # OfflineDocs - Epic Breakdown
 
 ## Overview

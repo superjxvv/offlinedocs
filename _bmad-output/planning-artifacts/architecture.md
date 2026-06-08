@@ -11,6 +11,8 @@ user_name: 'Claude'
 date: '2026-05-26'
 ---
 
+> **NOTE (Story 4.1):** This artifact references pnpm workspaces, pnpm-workspace.yaml, and pnpm commands throughout. The project migrated to npm workspaces in Story 4.1. Treat pnpm references below as historical.
+
 # Architecture Decision Document
 
 _This document builds collaboratively through step-by-step discovery. Sections are appended as we work through each architectural decision together._

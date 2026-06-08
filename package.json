@@ -5,20 +5,23 @@
   "engines": {
     "node": ">=22"
   },
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "build": "pnpm --filter @offlinedocs/shared build && pnpm --filter @offlinedocs/fetcher --filter @offlinedocs/server build",
+    "build": "npm -w @offlinedocs/shared run build && npm -w @offlinedocs/fetcher -w @offlinedocs/server run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "dev:fetcher": "pnpm --filter @offlinedocs/fetcher dev",
-    "dev:server": "pnpm --filter @offlinedocs/server dev",
-    "typecheck": "pnpm -r --parallel exec tsc --noEmit"
+    "dev:fetcher": "npm -w @offlinedocs/fetcher run dev",
+    "dev:server": "npm -w @offlinedocs/server run dev",
+    "typecheck": "npx -ws tsc --noEmit"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^3.2.1",
+    "@vitest/coverage-v8": "^4.1.8",
     "tsup": "^8.5.0",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
-    "vitest": "^3.2.1"
+    "vitest": "^4.1.8"
   }
 }

@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-05-26"
-last_updated: "2026-05-26T01:00:00Z"
+last_updated: "2026-06-08"
 project: workspace
 project_key: NOKEY
 tracking_system: file-system
@@ -43,28 +43,32 @@ story_location: "{project-root}/_bmad-output/implementation-artifacts"
 
 development_status:
   # Epic 1: Project Foundation & Bundle Format Contract
-  epic-1: in-progress
+  epic-1: done
   1-1-monorepo-scaffold-and-build-pipeline: done
   1-2-bundle-format-schemas-and-shared-types: done
   1-3-json-schema-generation-and-bundle-validation-helpers: done
   epic-1-retrospective: optional
 
   # Epic 2: Online Doc Fetching & Bundle Creation
-  epic-2: backlog
-  2-1-toml-config-loader: backlog
-  2-2-source-adapter-interface-and-llms-txt-adapter: backlog
-  2-3-github-source-adapter: backlog
-  2-4-context7-source-adapter: backlog
-  2-5-chunk-processor: backlog
-  2-6-bundle-writer-with-integrity-and-atomic-swap: backlog
-  2-7-fetcher-cli-with-incremental-updates-and-progress-reporting: backlog
+  epic-2: done
+  2-1-toml-config-loader: done
+  2-2-source-adapter-interface-and-llms-txt-adapter: done
+  2-3-github-source-adapter: done
+  2-4-context7-source-adapter: done
+  2-5-chunk-processor: done
+  2-6-bundle-writer-with-integrity-and-atomic-swap: done
+  2-7-fetcher-cli-with-incremental-updates-and-progress-reporting: done
   epic-2-retrospective: optional
 
   # Epic 3: Offline MCP Server & Production Readiness
-  epic-3: backlog
-  3-1-registry-loader-and-bundle-startup-validation: backlog
-  3-2-in-memory-search-index-and-ranking-algorithm: backlog
-  3-3-mcp-server-with-resolve-library-id-and-query-docs-tools: backlog
-  3-4-ci-pipeline-and-cross-platform-validation: backlog
-  3-5-readme-and-user-documentation: backlog
+  epic-3: done
+  3-1-registry-loader-and-bundle-startup-validation: done
+  3-2-in-memory-search-index-and-ranking-algorithm: done
+  3-3-mcp-server-with-resolve-library-id-and-query-docs-tools: done
+  3-4-ci-pipeline-and-cross-platform-validation: done
+  3-5-readme-and-user-documentation: done
   epic-3-retrospective: optional
+
+  # Epic 4: Tooling Migration
+  epic-4: done
+  4-1-migrate-pnpm-to-npm: done
