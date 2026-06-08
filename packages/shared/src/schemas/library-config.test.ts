@@ -55,4 +55,54 @@ describe('LibraryConfigSchema', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it('accepts optional maxDepth and followLinks', () => {
+    const result = LibraryConfigSchema.safeParse({
+      id: 'react',
+      name: 'React',
+      sourceType: 'github',
+      sourceUrl: 'https://github.com/facebook/react',
+      maxDepth: 5,
+      followLinks: false,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.maxDepth).toBe(5);
+      expect(result.data.followLinks).toBe(false);
+    }
+  });
+
+  it('defaults maxDepth and followLinks to undefined when absent', () => {
+    const result = LibraryConfigSchema.safeParse({
+      id: 'react',
+      name: 'React',
+      sourceType: 'github',
+      sourceUrl: 'https://github.com/facebook/react',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.maxDepth).toBeUndefined();
+      expect(result.data.followLinks).toBeUndefined();
+    }
+  });
+
+  it('rejects invalid maxDepth values', () => {
+    const zero = LibraryConfigSchema.safeParse({
+      id: 'react', name: 'React', sourceType: 'github',
+      sourceUrl: 'https://github.com/facebook/react', maxDepth: 0,
+    });
+    expect(zero.success).toBe(false);
+
+    const negative = LibraryConfigSchema.safeParse({
+      id: 'react', name: 'React', sourceType: 'github',
+      sourceUrl: 'https://github.com/facebook/react', maxDepth: -1,
+    });
+    expect(negative.success).toBe(false);
+
+    const decimal = LibraryConfigSchema.safeParse({
+      id: 'react', name: 'React', sourceType: 'github',
+      sourceUrl: 'https://github.com/facebook/react', maxDepth: 2.5,
+    });
+    expect(decimal.success).toBe(false);
+  });
 });

@@ -2,6 +2,9 @@ import { AdapterError, type LibraryConfig, type Result, ok, err, MAX_RETRIES_CDN
 
 import type { SourceAdapter, FetchResult, DocChunk, ValidationResult } from './types.js';
 import { fetchWithRetry } from './retry.js';
+import { extractMarkdownLinks, isAbsoluteUrl, resolveRelativePath, isWithinBasePath, getDirectoryPath } from './link-extractor.js';
+
+const DEFAULT_MAX_DEPTH = 20;
 
 interface GitHubParsed {
   owner: string;
@@ -50,6 +53,10 @@ export function parseGitHubUrl(sourceUrl: string): GitHubParsed {
   return { owner, repo, branch: 'main', path };
 }
 
+function isMarkdownFile(name: string): boolean {
+  return name.endsWith('.md') || name.endsWith('.mdx');
+}
+
 export class GitHubAdapter implements SourceAdapter {
   readonly sourceType = 'github' as const;
 
@@ -64,16 +71,16 @@ export class GitHubAdapter implements SourceAdapter {
     }
 
     const { owner, repo, branch, path } = parsed;
+    const maxDepth = config.maxDepth ?? DEFAULT_MAX_DEPTH;
+    const followLinks = config.followLinks !== false;
 
-    // Step 1: List directory contents via GitHub API
-    const listResult = await this.listDirectory(owner, repo, branch, path, config.id);
+    // Step 1: Recursively list all markdown files
+    const listResult = await this.listDirectoryRecursive(owner, repo, branch, path, config.id, 0, maxDepth);
     if (!listResult.ok) {
       return listResult;
     }
 
-    const mdFiles = listResult.data.filter(
-      (entry) => entry.type === 'file' && entry.name.endsWith('.md'),
-    );
+    const mdFiles = listResult.data;
 
     if (mdFiles.length === 0) {
       return err(
@@ -83,6 +90,10 @@ export class GitHubAdapter implements SourceAdapter {
 
     // Step 2: Fetch each markdown file
     const chunks: DocChunk[] = [];
+    const fetchedPaths = new Set<string>();
+    // Map chunk index → original file path (preserves extension for accurate link resolution)
+    const chunkFilePaths: string[] = [];
+
     for (const file of mdFiles) {
       const contentResult = await this.fetchFileContent(
         owner, repo, branch, file.path, file.download_url, config.id,
@@ -91,12 +102,19 @@ export class GitHubAdapter implements SourceAdapter {
         return contentResult;
       }
       const content = contentResult.data;
+      fetchedPaths.add(file.path);
       if (content.trim()) {
+        chunkFilePaths.push(file.path);
         chunks.push({
-          title: file.name.replace(/\.md$/, ''),
+          title: this.buildChunkTitle(file.path, path),
           content,
         });
       }
+    }
+
+    // Step 3: Follow links in fetched content
+    if (followLinks) {
+      await this.followLinks(chunks, chunkFilePaths, fetchedPaths, owner, repo, branch, path, config.id, maxDepth);
     }
 
     return ok({
@@ -121,6 +139,124 @@ export class GitHubAdapter implements SourceAdapter {
     }
 
     return { valid: errors.length === 0, errors, warnings };
+  }
+
+  private buildChunkTitle(filePath: string, basePath: string): string {
+    // Strip base path prefix and extension
+    let relative = filePath;
+    if (basePath && relative.startsWith(basePath + '/')) {
+      relative = relative.slice(basePath.length + 1);
+    }
+    // Remove extension
+    return relative.replace(/\.mdx?$/, '');
+  }
+
+  private async listDirectoryRecursive(
+    owner: string, repo: string, branch: string, path: string,
+    libraryId: string, depth: number, maxDepth: number,
+  ): Promise<Result<GitHubContentEntry[]>> {
+    if (depth > maxDepth) {
+      return ok([]);
+    }
+
+    const listResult = await this.listDirectory(owner, repo, branch, path, libraryId);
+    if (!listResult.ok) {
+      return listResult;
+    }
+
+    const entries = listResult.data;
+    const mdFiles: GitHubContentEntry[] = [];
+
+    const dirs: GitHubContentEntry[] = [];
+    for (const entry of entries) {
+      if (entry.type === 'file' && isMarkdownFile(entry.name)) {
+        mdFiles.push(entry);
+      } else if (entry.type === 'dir') {
+        dirs.push(entry);
+      }
+    }
+
+    // Recurse into subdirectories
+    for (const dir of dirs) {
+      const subResult = await this.listDirectoryRecursive(
+        owner, repo, branch, dir.path, libraryId, depth + 1, maxDepth,
+      );
+      if (!subResult.ok) {
+        return subResult;
+      }
+      mdFiles.push(...subResult.data);
+    }
+
+    return ok(mdFiles);
+  }
+
+  private async followLinks(
+    chunks: DocChunk[],
+    chunkFilePaths: string[],
+    fetchedPaths: Set<string>,
+    owner: string, repo: string, branch: string, basePath: string,
+    libraryId: string, maxDepth: number,
+  ): Promise<void> {
+    // BFS over linked files
+    let queue: Array<{ filePath: string; depth: number }> = [];
+
+    // Extract links from initially fetched chunks
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i]!;
+      const originalPath = chunkFilePaths[i]!;
+      const links = extractMarkdownLinks(chunk.content);
+      for (const link of links) {
+        if (isAbsoluteUrl(link)) continue;
+
+        // Resolve relative to the original file's directory (not the extensionless title)
+        const chunkDir = getDirectoryPath(originalPath);
+        const resolved = resolveRelativePath(chunkDir, link);
+
+        if (!fetchedPaths.has(resolved) && isMarkdownFile(resolved) && isWithinBasePath(resolved, basePath)) {
+          queue.push({ filePath: resolved, depth: 1 });
+          fetchedPaths.add(resolved);
+        }
+      }
+    }
+
+    // Process queue
+    while (queue.length > 0) {
+      const nextQueue: Array<{ filePath: string; depth: number }> = [];
+
+      for (const { filePath, depth } of queue) {
+        if (depth > maxDepth) continue;
+
+        const contentResult = await this.fetchFileContent(
+          owner, repo, branch, filePath, null, libraryId,
+        );
+        if (!contentResult.ok) {
+          // Skip files that can't be fetched (may not exist)
+          continue;
+        }
+
+        const content = contentResult.data;
+        if (!content.trim()) continue;
+
+        chunks.push({
+          title: this.buildChunkTitle(filePath, basePath),
+          content,
+        });
+
+        // Extract further links
+        const links = extractMarkdownLinks(content);
+        for (const link of links) {
+          if (isAbsoluteUrl(link)) continue;
+          const fileDir = getDirectoryPath(filePath);
+          const resolved = resolveRelativePath(fileDir, link);
+          if (!fetchedPaths.has(resolved) && isMarkdownFile(resolved) && isWithinBasePath(resolved, basePath)) {
+            nextQueue.push({ filePath: resolved, depth: depth + 1 });
+            fetchedPaths.add(resolved);
+          }
+        }
+      }
+
+      queue = nextQueue;
+    }
   }
 
   private async listDirectory(

@@ -7,6 +7,8 @@ export const LibraryConfigSchema = z.object({
   name: z.string().min(1),
   sourceType: SourceTypeEnum,
   sourceUrl: z.string().min(1),
+  maxDepth: z.number().int().positive().optional(),
+  followLinks: z.boolean().optional(),
 });
 
 export type LibraryConfig = z.infer<typeof LibraryConfigSchema>;

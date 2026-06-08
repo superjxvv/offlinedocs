@@ -75,8 +75,13 @@ describe('GitHubAdapter', () => {
   it('returns DocChunks for all markdown files from a public repo', async () => {
     globalThis.fetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
       const urlStr = typeof url === 'string' ? url : url.toString();
-      if (urlStr.includes('api.github.com')) {
+      // Directory listing for top-level docs/
+      if (urlStr.includes('api.github.com') && urlStr.includes('contents/docs?')) {
         return new Response(CONTENTS_API_RESPONSE, { status: 200 });
+      }
+      // Subdirectory listing for docs/images/ — returns empty (no markdown)
+      if (urlStr.includes('api.github.com') && urlStr.includes('contents/docs/images')) {
+        return new Response('[]', { status: 200 });
       }
       if (urlStr.includes('raw.githubusercontent.com') && urlStr.includes('getting-started')) {
         return new Response('# Getting Started\n\nWelcome to the docs.', { status: 200 });
@@ -104,6 +109,9 @@ describe('GitHubAdapter', () => {
     globalThis.fetch = vi.fn(async (url: string | URL | Request) => {
       const urlStr = typeof url === 'string' ? url : url.toString();
       calls.push(urlStr);
+      if (urlStr.includes('api.github.com') && urlStr.includes('contents/docs/images')) {
+        return new Response('[]', { status: 200 });
+      }
       if (urlStr.includes('api.github.com')) {
         return new Response(CONTENTS_API_RESPONSE, { status: 200 });
       }
@@ -185,6 +193,191 @@ describe('GitHubAdapter', () => {
     if (result.ok) return;
     expect(result.error.code).toBe('FORMAT_CHANGED');
     expect(result.error.libraryId).toBe('test');
+  });
+
+  it('recursively fetches markdown files from subdirectories', async () => {
+    const topDir = JSON.stringify([
+      { name: 'intro.md', path: 'docs/intro.md', type: 'file', download_url: null },
+      { name: 'guides', path: 'docs/guides', type: 'dir', download_url: null },
+    ]);
+    const subDir = JSON.stringify([
+      { name: 'setup.md', path: 'docs/guides/setup.md', type: 'file', download_url: null },
+      { name: 'advanced.mdx', path: 'docs/guides/advanced.mdx', type: 'file', download_url: null },
+    ]);
+
+    globalThis.fetch = vi.fn(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url.toString();
+      if (urlStr.includes('api.github.com') && urlStr.includes('contents/docs?')) {
+        return new Response(topDir, { status: 200 });
+      }
+      if (urlStr.includes('api.github.com') && urlStr.includes('contents/docs/guides')) {
+        return new Response(subDir, { status: 200 });
+      }
+      if (urlStr.includes('raw.githubusercontent.com')) {
+        const name = urlStr.split('/').pop()!;
+        return new Response(`# ${name}\nContent of ${name}`, { status: 200 });
+      }
+      return new Response('', { status: 404 });
+    });
+
+    const config = { id: 'test', name: 'Test', sourceType: 'github' as const, sourceUrl: 'https://github.com/owner/repo/tree/main/docs' };
+    const result = await adapter.fetch(config);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.chunks).toHaveLength(3);
+    const titles = result.data.chunks.map(c => c.title).sort();
+    expect(titles).toEqual(['guides/advanced', 'guides/setup', 'intro']);
+  });
+
+  it('includes .mdx files in results', async () => {
+    const dir = JSON.stringify([
+      { name: 'page.mdx', path: 'docs/page.mdx', type: 'file', download_url: null },
+      { name: 'other.ts', path: 'docs/other.ts', type: 'file', download_url: null },
+    ]);
+
+    globalThis.fetch = vi.fn(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url.toString();
+      if (urlStr.includes('api.github.com')) {
+        return new Response(dir, { status: 200 });
+      }
+      if (urlStr.includes('raw.githubusercontent.com')) {
+        return new Response('# MDX page', { status: 200 });
+      }
+      return new Response('', { status: 404 });
+    });
+
+    const config = { id: 'test', name: 'Test', sourceType: 'github' as const, sourceUrl: 'https://github.com/owner/repo/tree/main/docs' };
+    const result = await adapter.fetch(config);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.chunks).toHaveLength(1);
+    expect(result.data.chunks[0]!.title).toBe('page');
+  });
+
+  it('follows relative markdown links in content', async () => {
+    const dir = JSON.stringify([
+      { name: 'index.md', path: 'docs/index.md', type: 'file', download_url: null },
+    ]);
+
+    globalThis.fetch = vi.fn(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url.toString();
+      if (urlStr.includes('api.github.com')) {
+        return new Response(dir, { status: 200 });
+      }
+      if (urlStr.includes('raw.githubusercontent.com') && urlStr.includes('index.md')) {
+        return new Response('# Index\nSee [guide](./guide.md) for more.', { status: 200 });
+      }
+      if (urlStr.includes('raw.githubusercontent.com') && urlStr.includes('guide.md')) {
+        return new Response('# Guide\nDetailed guide content.', { status: 200 });
+      }
+      return new Response('', { status: 404 });
+    });
+
+    const config = { id: 'test', name: 'Test', sourceType: 'github' as const, sourceUrl: 'https://github.com/owner/repo/tree/main/docs' };
+    const result = await adapter.fetch(config);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.chunks).toHaveLength(2);
+    const titles = result.data.chunks.map(c => c.title);
+    expect(titles).toContain('index');
+    expect(titles).toContain('guide');
+  });
+
+  it('does not loop on circular links', async () => {
+    const dir = JSON.stringify([
+      { name: 'a.md', path: 'docs/a.md', type: 'file', download_url: null },
+    ]);
+
+    globalThis.fetch = vi.fn(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url.toString();
+      if (urlStr.includes('api.github.com')) {
+        return new Response(dir, { status: 200 });
+      }
+      if (urlStr.includes('raw.githubusercontent.com') && urlStr.includes('a.md')) {
+        return new Response('# A\n[Go to B](./b.md)', { status: 200 });
+      }
+      if (urlStr.includes('raw.githubusercontent.com') && urlStr.includes('b.md')) {
+        return new Response('# B\n[Go to A](./a.md)', { status: 200 });
+      }
+      return new Response('', { status: 404 });
+    });
+
+    const config = { id: 'test', name: 'Test', sourceType: 'github' as const, sourceUrl: 'https://github.com/owner/repo/tree/main/docs' };
+    const result = await adapter.fetch(config);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.chunks).toHaveLength(2);
+  });
+
+  it('respects maxDepth config for directory recursion', async () => {
+    // depth 0: docs/ has a subdir only, depth 1: docs/sub/ has another subdir, depth 2: docs/sub/deep/ has a file
+    const topDir = JSON.stringify([
+      { name: 'sub', path: 'docs/sub', type: 'dir', download_url: null },
+    ]);
+    const subDir = JSON.stringify([
+      { name: 'deep', path: 'docs/sub/deep', type: 'dir', download_url: null },
+    ]);
+    const deepDir = JSON.stringify([
+      { name: 'page.md', path: 'docs/sub/deep/page.md', type: 'file', download_url: null },
+    ]);
+
+    globalThis.fetch = vi.fn(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url.toString();
+      if (urlStr.includes('api.github.com') && urlStr.includes('contents/docs?')) {
+        return new Response(topDir, { status: 200 });
+      }
+      if (urlStr.includes('api.github.com') && urlStr.includes('contents/docs/sub?')) {
+        return new Response(subDir, { status: 200 });
+      }
+      if (urlStr.includes('api.github.com') && urlStr.includes('contents/docs/sub/deep')) {
+        return new Response(deepDir, { status: 200 });
+      }
+      if (urlStr.includes('raw.githubusercontent.com')) {
+        return new Response('# Deep Page', { status: 200 });
+      }
+      return new Response('', { status: 404 });
+    });
+
+    // maxDepth=1 allows depth 0 (docs/) and depth 1 (docs/sub/), but NOT depth 2 (docs/sub/deep/)
+    const config = { id: 'test', name: 'Test', sourceType: 'github' as const, sourceUrl: 'https://github.com/owner/repo/tree/main/docs', maxDepth: 1 };
+    const result = await adapter.fetch(config);
+
+    // The file at depth 2 should not be reached
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('EMPTY_RESPONSE');
+  });
+
+  it('does not follow links when followLinks is false', async () => {
+    const dir = JSON.stringify([
+      { name: 'index.md', path: 'docs/index.md', type: 'file', download_url: null },
+    ]);
+
+    globalThis.fetch = vi.fn(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url.toString();
+      if (urlStr.includes('api.github.com')) {
+        return new Response(dir, { status: 200 });
+      }
+      if (urlStr.includes('raw.githubusercontent.com') && urlStr.includes('index.md')) {
+        return new Response('# Index\n[Link](./other.md)', { status: 200 });
+      }
+      if (urlStr.includes('raw.githubusercontent.com') && urlStr.includes('other.md')) {
+        return new Response('# Other', { status: 200 });
+      }
+      return new Response('', { status: 404 });
+    });
+
+    const config = { id: 'test', name: 'Test', sourceType: 'github' as const, sourceUrl: 'https://github.com/owner/repo/tree/main/docs', followLinks: false };
+    const result = await adapter.fetch(config);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.chunks).toHaveLength(1);
+    expect(result.data.chunks[0]!.title).toBe('index');
   });
 
   describe('validate', () => {

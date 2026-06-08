@@ -42,3 +42,9 @@
 - ~~Story 3-5 artifact still references pnpm README commands — historical doc shows old pnpm prerequisites and commands~~ **RESOLVED** — Added deprecation notice at top of artifact.
 - ~~Architecture.md references pnpm extensively — pnpm-workspace.yaml in file tree, pnpm workspaces in tech stack, pnpm commands in developer workflow; canonical reference is now stale~~ **RESOLVED** — Added deprecation notice at top of artifact.
 - ~~Epics.md references pnpm decisions — planning artifact specifies "pnpm workspaces" as technical decision~~ **RESOLVED** — Added deprecation notice at top of artifact.
+
+## Deferred from: review of recursive-doc-fetching (2026-06-08)
+
+- No cap on total files fetched — large repos (10k+ markdown files) could exhaust API rate limits and memory. Consider adding a `maxFiles` config option.
+- Link extraction regex doesn't handle angle-bracket links `[text](<path.md>)`, title attributes `[text](path.md "title")`, or query strings. Uncommon but valid markdown.
+- Sequential file fetching — no concurrency for HTTP requests. Bounded `Promise.all` batches would improve throughput for large repos.

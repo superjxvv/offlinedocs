@@ -1,0 +1,59 @@
+[[library]]
+id = "react"
+name = "React"
+sourceType = "llms-txt"
+sourceUrl = "https://react.dev/llms.txt"
+
+[[library]]
+id = "nextjs"
+name = "Next.js"
+sourceType = "context7"
+sourceUrl = "/vercel/next.js"
+
+[[library]]
+id = "express"
+name = "Express"
+sourceType = "llms-txt"
+sourceUrl = "https://expressjs.com/llms.txt"
+
+[[library]]
+id = "tailwindcss"
+name = "Tailwind CSS"
+sourceType = "github"
+sourceUrl = "https://github.com/tailwindlabs/tailwindcss.com/tree/main/src/docs"
+
+[[library]]
+id = "mui"
+name = "MUI (Material UI)"
+sourceType = "github"
+sourceUrl = "https://github.com/mui/material-ui/tree/master/docs/data/material"
+
+[[library]]
+id = "storybook"
+name = "Storybook"
+sourceType = "llms-txt"
+sourceUrl = "https://storybook.js.org/llms.txt"
+
+[[library]]
+id = "eslint"
+name = "ESLint"
+sourceType = "github"
+sourceUrl = "https://github.com/eslint/eslint/tree/main/docs/src"
+
+[[library]]
+id = "typescript"
+name = "TypeScript"
+sourceType = "github"
+sourceUrl = "https://github.com/microsoft/TypeScript-Website/tree/v2/packages/documentation/copy/en/handbook-v2"
+
+[[library]]
+id = "date-fns"
+name = "date-fns"
+sourceType = "context7"
+sourceUrl = "/date-fns/date-fns"
+
+[[library]]
+id = "lodash"
+name = "Lodash"
+sourceType = "context7"
+sourceUrl = "/lodash/lodash"
