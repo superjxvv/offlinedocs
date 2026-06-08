@@ -9,6 +9,7 @@ services:
     working_dir: /workspace
     volumes:
       - .:/workspace
+      - /workspace/node_modules
       - ${CLAUDE_CONFIG_DIR:-${USERPROFILE}/.claude}:/home/claude/.claude
       - ${USERPROFILE}/.config/ccstatusline:/home/claude/.config/ccstatusline:ro
     environment:
