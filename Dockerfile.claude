@@ -22,6 +22,14 @@ RUN arch="$(uname -m)" \
   && "${CONDA_DIR}/bin/conda" clean -afy \
   && ln -sf "${CONDA_DIR}/bin/conda" /usr/local/bin/conda
 
+RUN GH_VERSION="2.74.0" \
+  && curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_$(dpkg --print-architecture).tar.gz" \
+     -o /tmp/gh.tar.gz \
+  && tar -xzf /tmp/gh.tar.gz -C /tmp \
+  && mv /tmp/gh_${GH_VERSION}_linux_$(dpkg --print-architecture)/bin/gh /usr/local/bin/gh \
+  && rm -rf /tmp/gh.tar.gz /tmp/gh_* \
+  && gh --version
+
 RUN npm install -g @anthropic-ai/claude-code
 
 RUN useradd -m claude \
@@ -37,5 +45,7 @@ RUN npx -y ccstatusline@latest --help 2>/dev/null || true
 WORKDIR /workspace
 
 RUN git config --global credential.helper '!f() { echo "username=x-access-token"; echo "password=${GITHUB_TOKEN}"; }; f'
+
+# gh CLI uses GITHUB_TOKEN automatically (no extra config needed)
 
 ENTRYPOINT ["claude"]
