@@ -315,6 +315,125 @@ describe('end-to-end pipeline', () => {
     expect(reactResult.code).toBe('LIBRARY_NOT_FOUND');
   });
 
+  it('all adapters fail: no bundle is written and server startup fails', async () => {
+    mockLlmsFetch
+      .mockResolvedValueOnce(err(new AdapterError('NETWORK', 'react', 'Network error')))
+      .mockResolvedValueOnce(err(new AdapterError('NETWORK', 'vue', 'Network error')));
+
+    const fetchResult = await fetchLibraries(
+      [
+        makeConfig({ id: 'react', name: 'React' }),
+        makeConfig({ id: 'vue', name: 'Vue' }),
+      ],
+      { bundlePath },
+    );
+    expect(fetchResult.fetched).toBe(0);
+    expect(fetchResult.failed).toBe(2);
+
+    // writeBundle was never called — registry.json doesn't exist
+    const startup = await startupBundle(bundlePath, { skipIntegrity: false });
+    expect(startup.ok).toBe(false);
+    if (startup.ok) return;
+    expect(startup.error.message).toMatch(/registry\.json not found/i);
+  });
+
+  it('changed content on second fetch triggers re-fetch without --force', async () => {
+    const original = [{ title: 'Intro', content: '# Intro\nOriginal content here.' }];
+    const changed = [{ title: 'Intro', content: '# Intro\nCompletely different content now.' }];
+
+    mockLlmsFetch.mockResolvedValue(makeFetchResult(original));
+    const first = await fetchLibraries(
+      [makeConfig({ id: 'mylib', name: 'My Library' })],
+      { bundlePath },
+    );
+    expect(first.fetched).toBe(1);
+
+    // Different hash → should re-fetch even without --force
+    mockLlmsFetch.mockResolvedValue(makeFetchResult(changed));
+    const second = await fetchLibraries(
+      [makeConfig({ id: 'mylib', name: 'My Library' })],
+      { bundlePath },
+    );
+    expect(second.fetched).toBe(1);
+    expect(second.skipped).toBe(0);
+
+    const startup = await startupBundle(bundlePath, { skipIntegrity: false });
+    expect(startup.ok).toBe(true);
+    if (!startup.ok) return;
+
+    const result = queryDocs(
+      startup.data.registry,
+      startup.data.index,
+      'mylib',
+      'completely different',
+      { staleThresholdDays: 9999 },
+    );
+    expect('content' in result).toBe(true);
+    if (!('content' in result)) return;
+    expect(result.content).toContain('Completely different');
+    expect(result.content).not.toContain('Original content');
+  });
+
+  it('queryDocs result includes correct chunk metadata fields', async () => {
+    mockLlmsFetch.mockResolvedValue(makeFetchResult(REACT_CHUNKS));
+    await fetchLibraries([makeConfig({ id: 'react', name: 'React' })], { bundlePath });
+
+    const startup = await startupBundle(bundlePath, { skipIntegrity: false });
+    expect(startup.ok).toBe(true);
+    if (!startup.ok) return;
+
+    const result = queryDocs(startup.data.registry, startup.data.index, 'react', 'hooks', {
+      staleThresholdDays: 9999,
+    });
+    expect('content' in result).toBe(true);
+    if (!('content' in result)) return;
+
+    expect(result.chunks.length).toBeGreaterThan(0);
+    const top = result.chunks[0]!;
+    expect(top.title).toBeTruthy();
+    expect(top.file).toMatch(/\.md$/);
+    expect(top.score).toBeGreaterThan(0);
+    expect(top.byteSize).toBeGreaterThan(0);
+    expect(result.truncated).toBe(false);
+    expect(result.query).toBe('hooks');
+    expect(result.libraryId).toBe('react');
+    expect(result.tokenCount).toBeGreaterThan(0);
+  });
+
+  it('queryDocs falls back to getting-started chunk when query has no matches', async () => {
+    // splitMarkdown splits on H2 (##), so use H2 headings to get meaningful filenames.
+    // "## Getting Started" → getting-started.md, which the fallback chain looks for.
+    const chunks = [
+      {
+        title: 'My Library Docs',
+        content: '## Getting Started\nWelcome to the library. Basic setup here.\n\n## Advanced\nAdvanced configuration options.',
+      },
+    ];
+    mockLlmsFetch.mockResolvedValue(makeFetchResult(chunks));
+    await fetchLibraries([makeConfig({ id: 'mylib', name: 'My Library' })], { bundlePath });
+
+    const startup = await startupBundle(bundlePath, { skipIntegrity: false });
+    expect(startup.ok).toBe(true);
+    if (!startup.ok) return;
+
+    // Sanity: verify the chunk was named correctly by the processor
+    expect(startup.data.chunks.find((c) => c.filename === 'getting-started.md')).toBeDefined();
+
+    // A query with no matching tokens triggers the getting-started fallback
+    const result = queryDocs(
+      startup.data.registry,
+      startup.data.index,
+      'mylib',
+      'xyznonexistentterm',
+      { staleThresholdDays: 9999 },
+    );
+    expect('content' in result).toBe(true);
+    if (!('content' in result)) return;
+    expect(result.chunks[0]?.file).toBe('getting-started.md');
+    expect(result.content).toContain('Getting Started');
+    expect(result.chunks[0]?.score).toBe(0);
+  });
+
   it('startup fails when a chunk file has been tampered with', async () => {
     mockLlmsFetch.mockResolvedValue(makeFetchResult(REACT_CHUNKS));
     await fetchLibraries([makeConfig({ id: 'react', name: 'React' })], { bundlePath });
