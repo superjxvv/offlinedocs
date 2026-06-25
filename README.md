@@ -149,14 +149,16 @@ Replace the paths with the actual locations on your machine. After saving, resta
 
 ## Airgap Transfer Workflow
 
-1. **Fetch** (on an online machine):
+1. **Fetch and build** (on an online machine):
    ```bash
-   offlinedocs-fetch fetch --config libraries.toml --bundle-path ./doc-bundle
+   npm install
+   npm run build
+   npx offlinedocs-fetch fetch --config libraries.toml --bundle-path ./doc-bundle
    ```
 
-2. **Copy** the entire `doc-bundle/` directory to the airgapped machine via USB drive, file share, or any transfer mechanism. The bundle is a plain directory of markdown files and a JSON registry — no database, no binary blobs — fully inspectable for security review.
+2. **Copy** the entire project directory (including `node_modules/` and `doc-bundle/`) to the airgapped machine via USB drive, file share, or any transfer mechanism. The server depends on workspace-linked packages (`@offlinedocs/shared`) that Node resolves relative to the repo structure, so the full directory tree must be preserved. The doc bundle itself is plain markdown files and a JSON registry — no database, no binary blobs — fully inspectable for security review.
 
-3. **Configure** `.claude/settings.json` on the airgapped machine with the bundle path (see [Claude Code Setup](#claude-code-setup) above).
+3. **Configure** `.claude/settings.json` on the airgapped machine with absolute paths to the server and bundle (see [Claude Code Setup](#claude-code-setup) above). The config uses `node` directly — `npx` will not work without internet access.
 
 4. **Restart** Claude Code. The MCP server loads the bundle automatically at startup.
 
@@ -165,7 +167,7 @@ Replace the paths with the actual locations on your machine. After saving, resta
    Use resolve-library-id to find "react"
    ```
 
-To update docs, repeat steps 1-2 on the online machine and re-copy the bundle. Restart the MCP server to pick up changes.
+To update docs, repeat steps 1-2 on the online machine and re-copy the project directory. Restart the MCP server to pick up changes.
 
 ## Troubleshooting
 
