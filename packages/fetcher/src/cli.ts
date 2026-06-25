@@ -2,6 +2,13 @@
 // Commander.js arg parsing only — no business logic here.
 // Shebang injected by tsup banner config.
 
+import { existsSync } from 'node:fs';
+
+// Load .env file if present (Node 22+ built-in)
+if (existsSync('.env')) {
+  process.loadEnvFile('.env');
+}
+
 import { Command } from 'commander';
 
 import { loadConfig } from './config/config-loader.js';

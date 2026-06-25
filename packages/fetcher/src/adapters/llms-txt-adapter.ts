@@ -149,7 +149,7 @@ export class LlmsTxtAdapter implements SourceAdapter {
   private titleFromUrl(url: string): string {
     try {
       const parsed = new URL(url);
-      const path = parsed.pathname.replace(/\.mdx?$/, '').replace(/^\/+|\/+$/g, '');
+      const path = parsed.pathname.replace(/\.(?:mdx?|txt)$/, '').replace(/^\/+|\/+$/g, '');
       return path.split('/').pop() || 'untitled';
     } catch {
       return 'untitled';

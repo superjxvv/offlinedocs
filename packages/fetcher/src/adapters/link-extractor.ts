@@ -1,10 +1,10 @@
 /**
- * Extract markdown links pointing to .md or .mdx files from content.
+ * Extract markdown links pointing to .md, .mdx, or .txt files from content.
  * Returns deduplicated link targets (href portion only).
  * Filters out fragment-only links and data/mailto URIs.
  */
 export function extractMarkdownLinks(content: string): string[] {
-  const linkRegex = /\[[^\]]*\]\(([^)]+\.mdx?)(?:#[^)]*)?\)/g;
+  const linkRegex = /\[[^\]]*\]\(([^)]+\.(?:mdx?|txt))(?:#[^)]*)?\)/g;
   const seen = new Set<string>();
   const links: string[] = [];
 

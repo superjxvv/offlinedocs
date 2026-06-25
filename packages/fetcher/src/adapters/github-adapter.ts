@@ -101,8 +101,9 @@ export class GitHubAdapter implements SourceAdapter {
       if (!contentResult.ok) {
         return contentResult;
       }
-      const content = contentResult.data;
+      const rawContent = contentResult.data;
       fetchedPaths.add(file.path);
+      const content = file.path.endsWith('.mdx') ? this.stripMdxSyntax(rawContent) : rawContent;
       if (content.trim()) {
         chunkFilePaths.push(file.path);
         chunks.push({
@@ -139,6 +140,34 @@ export class GitHubAdapter implements SourceAdapter {
     }
 
     return { valid: errors.length === 0, errors, warnings };
+  }
+
+  /**
+   * Strip MDX-specific syntax (JSX imports, components, export statements)
+   * to produce cleaner markdown content.
+   */
+  private stripMdxSyntax(content: string): string {
+    return content
+      // Remove multi-line import blocks: import {\n  X,\n  Y\n} from "z";
+      .replace(/^import\s*\{[\s\S]*?\}\s*from\s*["'][^"']*["'];?\s*$/gm, '')
+      // Remove single-line import statements: import X from "y";
+      .replace(/^import\s+.*$/gm, '')
+      // Remove export const/let/var declarations (metadata like title, description)
+      .replace(/^export\s+(?:const|let|var)\s+\w+\s*=\s*(?:"[^"]*"|'[^']*'|`[^`]*`);?\s*$/gm, '')
+      // Remove export default statements
+      .replace(/^export\s+default\s+.*$/gm, '')
+      // Remove multi-line JSX blocks: <Component\n  prop={...}\n/>
+      .replace(/<[A-Z][A-Za-z]*\s[\s\S]*?\/>/g, '')
+      // Remove multi-line JSX with children: <Component ...>...</Component>
+      .replace(/<[A-Z][A-Za-z]*(?:\s[^>]*)?>[\s\S]*?<\/[A-Z][A-Za-z]*>/g, '')
+      // Remove remaining self-closing JSX tags: <Component />
+      .replace(/^\s*<[A-Z][A-Za-z]*(?:\s+[^>]*)?\s*\/>\s*$/gm, '')
+      // Remove remaining JSX opening + closing tags on their own lines
+      .replace(/^\s*<[A-Z][A-Za-z]*(?:\s+[^>]*)?>\s*$/gm, '')
+      .replace(/^\s*<\/[A-Z][A-Za-z]*>\s*$/gm, '')
+      // Collapse 3+ consecutive blank lines to 2
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
   }
 
   private buildChunkTitle(filePath: string, basePath: string): string {
@@ -234,7 +263,8 @@ export class GitHubAdapter implements SourceAdapter {
           continue;
         }
 
-        const content = contentResult.data;
+        const rawContent = contentResult.data;
+        const content = filePath.endsWith('.mdx') ? this.stripMdxSyntax(rawContent) : rawContent;
         if (!content.trim()) continue;
 
         chunks.push({
@@ -243,7 +273,7 @@ export class GitHubAdapter implements SourceAdapter {
         });
 
         // Extract further links
-        const links = extractMarkdownLinks(content);
+        const links = extractMarkdownLinks(rawContent);
         for (const link of links) {
           if (isAbsoluteUrl(link)) continue;
           const fileDir = getDirectoryPath(filePath);

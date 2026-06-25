@@ -14,7 +14,7 @@ export class Context7Adapter implements SourceAdapter {
       ? config.sourceUrl
       : `/${config.sourceUrl}`;
 
-    const url = `${CONTEXT7_BASE_URL}${libraryId}/llms-ctx.txt`;
+    const url = `${CONTEXT7_BASE_URL}${libraryId}/llms.txt`;
 
     const result = await fetchWithRetry(url, MAX_RETRIES_API, config.id);
 
@@ -42,6 +42,13 @@ export class Context7Adapter implements SourceAdapter {
     if (!text.trim()) {
       return err(
         new AdapterError('EMPTY_RESPONSE', config.id, `Empty response from Context7 for ${libraryId}`),
+      );
+    }
+
+    // Detect HTML responses (Context7 web UI instead of raw docs)
+    if (text.trimStart().startsWith('<!DOCTYPE') || text.trimStart().startsWith('<html')) {
+      return err(
+        new AdapterError('FORMAT_CHANGED', config.id, `Context7 returned HTML instead of markdown for ${libraryId} — the API endpoint may have changed`),
       );
     }
 

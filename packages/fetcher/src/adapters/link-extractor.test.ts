@@ -33,6 +33,11 @@ describe('extractMarkdownLinks', () => {
     expect(extractMarkdownLinks(content)).toEqual(['./guide.md']);
   });
 
+  it('extracts .txt links', () => {
+    const content = '- [Guides](https://expressjs.com/llms/guides-5x.txt)';
+    expect(extractMarkdownLinks(content)).toEqual(['https://expressjs.com/llms/guides-5x.txt']);
+  });
+
   it('ignores links to non-markdown files', () => {
     const content = '[img](./photo.png) [script](./app.ts) [page](./page.md)';
     expect(extractMarkdownLinks(content)).toEqual(['./page.md']);
