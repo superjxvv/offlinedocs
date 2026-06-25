@@ -21,7 +21,7 @@ function makeRegistry(
       description: lib.description ?? 'A library description',
       sourceType: 'llms-txt' as const,
       sourceUrl: 'https://example.com',
-      lastFetched: lib.lastFetched ?? '2026-05-20T00:00:00.000Z',
+      lastFetched: lib.lastFetched ?? new Date().toISOString(),
       contentHash: 'abc123',
       chunkCount: 1,
       checksums: {},
