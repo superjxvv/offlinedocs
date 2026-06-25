@@ -23,12 +23,20 @@ name = "React"
 sourceType = "llms-txt"
 sourceUrl = "https://react.dev/llms.txt"
 
-# github: Fetch markdown files from a GitHub repo folder
+# llms-txt links to .md, .mdx, and .txt files are followed automatically
 [[library]]
 id = "express"
 name = "Express"
+sourceType = "llms-txt"
+sourceUrl = "https://expressjs.com/llms.txt"
+
+# github: Fetch markdown files from a GitHub repo folder
+# .mdx files are automatically cleaned (JSX imports/components stripped)
+[[library]]
+id = "tailwindcss"
+name = "Tailwind CSS"
 sourceType = "github"
-sourceUrl = "https://github.com/expressjs/expressjs.com/tree/gh-pages/en"
+sourceUrl = "https://github.com/tailwindlabs/tailwindcss.com/tree/main/src/docs"
 
 # context7: Fetch from Context7 API (requires internet for initial seed)
 [[library]]
@@ -47,7 +55,21 @@ sourceUrl = "/vercel/next.js"
 | `sourceType` | Yes | One of: `llms-txt`, `github`, `context7` |
 | `sourceUrl` | Yes | Source URL (varies by type) |
 
-For `llms-txt`, the URL points to a site's `llms.txt` endpoint (a standard for publishing LLM-friendly documentation). For `github`, the URL points to a repo folder containing markdown files. For `context7`, use the Context7 library ID (e.g., `/vercel/next.js`).
+For `llms-txt`, the URL points to a site's `llms.txt` endpoint (a standard for publishing LLM-friendly documentation). Links to `.md`, `.mdx`, and `.txt` files found in the content are automatically followed and fetched. For `github`, the URL points to a repo folder containing markdown files — `.mdx` files are automatically cleaned (JSX imports, export statements, and components are stripped). For `context7`, use the Context7 library ID (e.g., `/vercel/next.js`).
+
+## Environment Variables
+
+The fetcher loads a `.env` file from the current working directory if present.
+
+| Variable | Description |
+|----------|-------------|
+| `GITHUB_TOKEN` | GitHub personal access token for `github` source type. Without a token, GitHub API requests are limited to 60/hour and will fail on larger repos. With a token, the limit is 5,000/hour. Create one at GitHub > Settings > Developer settings > Personal access tokens (no special scopes needed). |
+
+Example `.env`:
+
+```
+GITHUB_TOKEN=ghp_your_token_here
+```
 
 ## Fetcher Usage
 
@@ -153,6 +175,7 @@ To update docs, repeat steps 1-2 on the online machine and re-copy the bundle. R
 | `File count mismatch` or `Checksum mismatch` | Bundle was partially copied or corrupted during transfer | Re-copy the entire bundle directory; use `--skip-integrity` temporarily for development |
 | `Expected bundle format version 1, got X` | Bundle created with a different version of OfflineDocs | Re-fetch the bundle with the matching fetcher version |
 | Stale docs warning in query responses | Library docs are older than the threshold (default 30 days) | Re-run the fetcher on the online machine and transfer the updated bundle |
+| `AUTH_REQUIRED` for GitHub sources | GitHub API rate limit (60 req/hour unauthenticated) | Set `GITHUB_TOKEN` in a `.env` file in the project root (see [Environment Variables](#environment-variables)) |
 | Tool name collision with Context7 | Both Context7 and OfflineDocs MCP servers are configured | Disable one in `.claude/settings.json` — they use identical tool names (`resolve-library-id`, `query-docs`) and cannot coexist |
 
 ## Project Structure
